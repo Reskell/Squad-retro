@@ -85,6 +85,52 @@ impl Bibliotheque {
         Bibliotheque { fiches }
     }
 
+    /// Les fichiers identiques (même empreinte) rangés plusieurs fois : de la
+    /// place perdue, à signaler. Chaque groupe contient au moins deux chemins.
+    pub fn doublons(&self) -> Vec<Vec<PathBuf>> {
+        let mut par_sha1: BTreeMap<&str, Vec<PathBuf>> = BTreeMap::new();
+        for v in self.fiches.iter().flat_map(|f| f.variantes.iter()) {
+            if let Some(e) = &v.empreintes {
+                par_sha1
+                    .entry(e.sha1.as_str())
+                    .or_default()
+                    .push(v.chemin.clone());
+            }
+        }
+        par_sha1.into_values().filter(|g| g.len() > 1).collect()
+    }
+
+    /// Recherche sur toutes les consoles : chaque mot doit apparaître dans le
+    /// titre, sans tenir compte des majuscules ni des accents.
+    pub fn rechercher(&self, texte: &str) -> Vec<&Fiche> {
+        let mots: Vec<String> = texte.split_whitespace().map(simplifier).collect();
+        if mots.is_empty() {
+            return Vec::new();
+        }
+        self.fiches
+            .iter()
+            .filter(|f| {
+                let titre = simplifier(&f.titre);
+                mots.iter().all(|m| titre.contains(m.as_str()))
+            })
+            .collect()
+    }
+
+    /// Un jeu au hasard parmi ceux qui passent le filtre. `graine` vient de
+    /// l'app (l'heure, par exemple) : le moteur reste sans hasard caché.
+    pub fn au_hasard(&self, filtre: impl Fn(&Fiche) -> bool, graine: u64) -> Option<&Fiche> {
+        let candidats: Vec<&Fiche> = self.fiches.iter().filter(|f| filtre(f)).collect();
+        if candidats.is_empty() {
+            return None;
+        }
+        // Mélange de la graine (splitmix64) pour éviter de toujours tomber au début.
+        let mut z = graine.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^= z >> 31;
+        Some(candidats[(z % candidats.len() as u64) as usize])
+    }
+
     /// Les fiches d'une console.
     pub fn de(&self, console: Console) -> impl Iterator<Item = &Fiche> {
         self.fiches.iter().filter(move |f| f.console == console)
@@ -116,6 +162,26 @@ pub fn scanner_console(console: Console, dossier: &Path, options: &Options) -> V
             }
         })
         .collect()
+}
+
+/// En minuscules, sans accents ni ponctuation : « Pokémon : Rouge » → « pokemon rouge ».
+pub fn simplifier(texte: &str) -> String {
+    let mut s = String::new();
+    for c in texte.to_lowercase().chars() {
+        let c = match c {
+            'à' | 'â' | 'ä' | 'á' | 'ã' => 'a',
+            'é' | 'è' | 'ê' | 'ë' => 'e',
+            'î' | 'ï' | 'í' => 'i',
+            'ô' | 'ö' | 'ó' | 'õ' => 'o',
+            'ù' | 'û' | 'ü' | 'ú' => 'u',
+            'ç' => 'c',
+            'ñ' => 'n',
+            c if c.is_alphanumeric() => c,
+            _ => ' ',
+        };
+        s.push(c);
+    }
+    s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 fn lister(dossier: &Path, console: Console, profondeur: u8, sortie: &mut Vec<PathBuf>) {
@@ -189,6 +255,27 @@ pub fn charger_bases(dossier: &Path) -> HashMap<Console, Base> {
 mod tests {
     use super::*;
     use std::fs::write;
+
+    #[test]
+    fn doublons_recherche_hasard() {
+        let dir = tempfile::tempdir().unwrap();
+        let snes = dir.path().join("snes");
+        fs::create_dir_all(snes.join("copies")).unwrap();
+        write(snes.join("Pokémon Rouge (France).sfc"), b"meme").unwrap();
+        write(
+            snes.join("copies").join("Pokemon Rouge (France) copie.sfc"),
+            b"meme",
+        )
+        .unwrap();
+        write(snes.join("Zelda (Europe).sfc"), b"autre").unwrap();
+        let b = Bibliotheque::scanner(dir.path(), &Options::default());
+        assert_eq!(b.doublons().len(), 1);
+        assert_eq!(b.rechercher("pokemon").len(), 2);
+        assert_eq!(b.rechercher("ZELDA eur").len(), 0);
+        assert_eq!(b.rechercher("zelda").len(), 1);
+        assert!(b.au_hasard(|f| f.titre.contains("Zelda"), 42).is_some());
+        assert!(b.au_hasard(|_| false, 1).is_none());
+    }
 
     #[test]
     fn charge_les_bases_presentes() {

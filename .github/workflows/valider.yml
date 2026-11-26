@@ -1,0 +1,24 @@
+# « Valider pour tout le monde » : après avoir testé la bêta, copie
+# versions-beta.json en versions.json. Toutes les apps installent alors ces
+# versions, en même temps : le netplay reste compatible.
+name: Valider pour tout le monde
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  valider:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          test -f manifestes/versions-beta.json || { echo "Pas de bêta à valider."; exit 1; }
+          cp manifestes/versions-beta.json manifestes/versions.json
+          git config user.name "SQUAD//RETRO"
+          git config user.email "actions@github.com"
+          git add manifestes/versions.json
+          git commit -m "Versions validées pour tout le monde" || echo "Déjà validé."
+          git push

@@ -1,0 +1,12 @@
+{
+  "revision": 1,
+  "jeux": [
+    { "console": "snes", "titre": "Super Mario World", "statut": "parfait", "joueurs": 2, "netplay": true, "options": {} },
+    { "console": "snes", "titre": "Super Bomberman", "statut": "parfait", "joueurs": 4, "netplay": true, "options": {} },
+    { "console": "n64", "titre": "Mario Kart 64", "statut": "parfait", "joueurs": 4, "netplay": true, "options": {} },
+    { "console": "n64", "titre": "GoldenEye 007", "statut": "bugs_connus", "notes": "Ralentissements possibles à 4 joueurs.", "joueurs": 4, "netplay": true, "options": {} },
+    { "console": "gamecube", "titre": "Mario Kart - Double Dash!!", "statut": "parfait", "joueurs": 4, "netplay": true, "options": {} },
+    { "console": "gamecube", "titre": "Super Smash Bros. Melee", "statut": "parfait", "joueurs": 4, "netplay": true, "options": {} },
+    { "console": "wii", "titre": "Mario Kart Wii", "statut": "bugs_connus", "notes": "Netplay capricieux avec de vraies Wiimotes.", "joueurs": 4, "netplay": false, "options": {} }
+  ]
+}

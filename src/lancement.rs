@@ -1,54 +1,23 @@
-//! La commande qui lance un jeu.
+//! Lancer un jeu : vérifier que tout est là, écrire la config, préparer la
+//! commande.
 //!
-//! RetroArch est lancé avec le bon core, une config préparée par SQUAD et son
-//! menu inaccessible : le joueur ne voit que le jeu, en plein écran. Échap
-//! quitte et ramène au launcher. Dolphin est lancé en mode « batch » : il
-//! démarre le jeu tout de suite et se ferme avec lui.
+//! RetroArch est lancé avec le bon core, la config SQUAD et son menu en mode
+//! kiosque : le joueur ne voit que le jeu. Dolphin est lancé en mode batch :
+//! il démarre le jeu tout de suite et se ferme avec lui.
 //!
-//! Le moteur prépare la commande sans la lancer : l'app (squad-desktop ou
-//! l'app autonome) la lance et suit le processus, comme pour les jeux Steam.
+//! Le moteur prépare la commande sans la lancer : l'app la lance et suit le
+//! processus, comme pour les jeux Steam.
 
-use crate::bibliotheque::Variante;
 use crate::consoles::{Console, Moteur};
+use crate::emplacements::Emplacements;
+use crate::netplay::Session;
+use crate::profil::Profil;
+use crate::{dolphin, retroarch};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Où sont installés les émulateurs (gérés par le launcher, pas par le joueur).
-#[derive(Debug, Clone)]
-pub struct Emplacements {
-    /// L'exécutable RetroArch.
-    pub retroarch: PathBuf,
-    /// Le dossier des cores libretro.
-    pub cores: PathBuf,
-    /// Le dossier où SQUAD écrit une config RetroArch par console.
-    pub configs: PathBuf,
-    /// L'exécutable Dolphin.
-    pub dolphin: PathBuf,
-    /// Le dossier utilisateur de Dolphin, propre à SQUAD (option -u).
-    pub dossier_dolphin: PathBuf,
-}
-
-impl Emplacements {
-    /// Les emplacements déduits de l'exécutable RetroArch : les cores sont
-    /// dans son dossier `cores/`, les configs SQUAD dans `donnees/configs`.
-    /// Dolphin n'est pas encore géré par la vague 1 : ses chemins pointent
-    /// vers `donnees/dolphin` en attendant l'installation automatique.
-    pub fn depuis_retroarch(retroarch: &Path, donnees: &Path) -> Emplacements {
-        let dossier = retroarch.parent().unwrap_or(Path::new("."));
-        Emplacements {
-            retroarch: retroarch.to_path_buf(),
-            cores: dossier.join("cores"),
-            configs: donnees.join("configs"),
-            dolphin: donnees.join("dolphin").join(if cfg!(windows) {
-                "Dolphin.exe"
-            } else {
-                "dolphin-emu"
-            }),
-            dossier_dolphin: donnees.join("dolphin").join("User"),
-        }
-    }
-}
+pub use crate::retroarch::{chemin_config, extension_core};
 
 /// Une commande prête à lancer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -58,219 +27,202 @@ pub struct Commande {
 }
 
 impl Commande {
-    /// La commande système correspondante.
+    /// La commande système, lancée depuis le dossier du programme.
     pub fn vers_process(&self) -> Command {
         let mut c = Command::new(&self.programme);
         c.args(&self.arguments);
+        if let Some(dossier) = self.programme.parent() {
+            if dossier.is_dir() {
+                c.current_dir(dossier);
+            }
+        }
         c
     }
 }
 
-/// L'extension des cores libretro sur ce système.
-pub fn extension_core() -> &'static str {
-    if cfg!(windows) {
-        "dll"
-    } else if cfg!(target_os = "macos") {
-        "dylib"
-    } else {
-        "so"
+/// Ce qui manque pour lancer une console, en clair.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "manque", rename_all = "snake_case")]
+pub enum Manque {
+    Retroarch,
+    Core { core: String },
+    Dolphin,
+    Bios,
+}
+
+impl Manque {
+    pub fn message(&self, console: Console) -> String {
+        match self {
+            Manque::Retroarch => "RetroArch n'est pas encore installé : lance l'installation des émulateurs.".into(),
+            Manque::Core { core } => format!(
+                "Le moteur « {core} » de la {} n'est pas installé : lance l'installation des émulateurs.",
+                console.nom()
+            ),
+            Manque::Dolphin => "Dolphin (GameCube et Wii) n'est pas encore installé : lance l'installation des émulateurs.".into(),
+            Manque::Bios => "La PlayStation a besoin de son BIOS : copie celui de ta console (scph5502.bin pour une console européenne) dans le dossier BIOS.".into(),
+        }
+    }
+
+    /// Vrai si l'installation automatique peut régler le problème.
+    pub fn installable(&self) -> bool {
+        !matches!(self, Manque::Bios)
     }
 }
 
-/// Prépare la commande qui lance cette version d'un jeu.
-pub fn commande(console: Console, variante: &Variante, ou: &Emplacements) -> Commande {
-    let rom = variante.chemin.to_string_lossy().into_owned();
+/// Tout ce qui manque pour lancer une console (vide = prêt).
+pub fn manques(console: Console, ou: &Emplacements) -> Vec<Manque> {
+    let mut m = Vec::new();
     match console.moteur() {
         Moteur::Retroarch { core } => {
-            let core = ou
-                .cores
-                .join(format!("{core}_libretro.{}", extension_core()));
-            let config = chemin_config(&ou.configs, console);
-            Commande {
-                programme: ou.retroarch.clone(),
-                arguments: vec![
-                    "-L".into(),
-                    core.to_string_lossy().into_owned(),
-                    "--config".into(),
-                    config.to_string_lossy().into_owned(),
-                    "--fullscreen".into(),
-                    rom,
-                ],
+            if !ou.retroarch.is_file() {
+                m.push(Manque::Retroarch);
+            }
+            if !retroarch::fichier_core(ou, core).is_file() {
+                m.push(Manque::Core { core: core.into() });
             }
         }
+        Moteur::Dolphin => {
+            if !ou.dolphin.is_file() {
+                m.push(Manque::Dolphin);
+            }
+        }
+    }
+    if console.demande_un_bios() && retroarch::bios_ps1(ou).is_none() {
+        m.push(Manque::Bios);
+    }
+    m
+}
+
+/// Vérifie que tout est en place, avec un message clair sinon.
+pub fn verifier(console: Console, ou: &Emplacements) -> Result<(), String> {
+    match manques(console, ou).first() {
+        None => Ok(()),
+        Some(m) => Err(m.message(console)),
+    }
+}
+
+/// Écrit la config d'une console avant de la lancer.
+pub fn preparer(
+    console: Console,
+    ou: &Emplacements,
+    profil: &Profil,
+    session: Option<&Session>,
+) -> std::io::Result<()> {
+    match console.moteur() {
+        Moteur::Retroarch { .. } => retroarch::preparer(console, ou, profil, session),
+        Moteur::Dolphin => dolphin::preparer(console, ou, profil, session),
+    }
+}
+
+/// La commande qui lance un jeu.
+pub fn commande(
+    console: Console,
+    rom: &Path,
+    ou: &Emplacements,
+    session: Option<&Session>,
+) -> Commande {
+    match console.moteur() {
+        Moteur::Retroarch { .. } => Commande {
+            programme: ou.retroarch.clone(),
+            arguments: retroarch::arguments(console, rom, ou, session),
+        },
         Moteur::Dolphin => Commande {
             programme: ou.dolphin.clone(),
-            arguments: vec![
-                "-u".into(),
-                ou.dossier_dolphin.to_string_lossy().into_owned(),
-                "-b".into(),
-                "-e".into(),
-                rom,
-            ],
+            arguments: dolphin::arguments(rom, ou, session),
         },
     }
 }
 
-/// Vérifie que tout est en place pour lancer une console, avec un message
-/// clair sinon.
-pub fn verifier(console: Console, ou: &Emplacements) -> Result<(), String> {
-    match console.moteur() {
-        Moteur::Retroarch { core } => {
-            if !ou.retroarch.is_file() {
-                return Err(
-                    "RetroArch est introuvable : choisis retroarch.exe dans les réglages.".into(),
-                );
-            }
-            let fichier = ou
-                .cores
-                .join(format!("{core}_libretro.{}", extension_core()));
-            if !fichier.is_file() {
-                return Err(format!(
-                    "Le core « {core} » ({}) manque dans {}. L'installation automatique arrive avec la vague 3 ; \
-                     en attendant, installe-le une fois depuis RetroArch (Mise à jour en ligne > Télécharger un core).",
-                    console.nom(),
-                    ou.cores.display()
-                ));
-            }
-            Ok(())
-        }
-        Moteur::Dolphin => {
-            if ou.dolphin.is_file() {
-                Ok(())
-            } else {
-                Err("Dolphin n'est pas encore installé : la GameCube et la Wii arrivent avec la vague 2.".into())
-            }
-        }
-    }
-}
-
-/// Écrit la config SQUAD d'une console avant de la lancer (RetroArch seulement).
-pub fn preparer(
+/// Compresser une image disque sans perte : .iso GameCube/Wii → .rvz
+/// (DolphinTool), .cue PS1 → .chd (chdman). L'original n'est jamais supprimé
+/// par le moteur : l'app propose de le faire une fois la copie vérifiée.
+pub fn conversion(
     console: Console,
+    entree: &Path,
     ou: &Emplacements,
-    dossier_sauvegardes: &Path,
-) -> std::io::Result<()> {
-    if let Moteur::Retroarch { .. } = console.moteur() {
-        std::fs::create_dir_all(&ou.configs)?;
-        std::fs::create_dir_all(dossier_sauvegardes.join(console.dossier()))?;
-        std::fs::write(
-            chemin_config(&ou.configs, console),
-            config_retroarch(console, dossier_sauvegardes),
-        )?;
+) -> Option<(Commande, PathBuf)> {
+    let ext = entree.extension()?.to_str()?.to_ascii_lowercase();
+    let texte = |p: &Path| p.to_string_lossy().into_owned();
+    match (console, ext.as_str()) {
+        (Console::Gamecube | Console::Wii, "iso" | "gcm" | "gcz" | "wbfs") => {
+            let sortie = entree.with_extension("rvz");
+            let arguments = [
+                "convert",
+                "-i",
+                &texte(entree),
+                "-o",
+                &texte(&sortie),
+                "-f",
+                "rvz",
+                "-b",
+                "131072",
+                "-c",
+                "zstd",
+                "-l",
+                "5",
+            ]
+            .map(String::from)
+            .to_vec();
+            Some((
+                Commande {
+                    programme: ou.dolphin_tool(),
+                    arguments,
+                },
+                sortie,
+            ))
+        }
+        (Console::Ps1, "cue") => {
+            let sortie = entree.with_extension("chd");
+            let arguments = ["createcd", "-i", &texte(entree), "-o", &texte(&sortie)]
+                .map(String::from)
+                .to_vec();
+            Some((
+                Commande {
+                    programme: ou.chdman(),
+                    arguments,
+                },
+                sortie,
+            ))
+        }
+        _ => None,
     }
-    Ok(())
-}
-
-/// Le fichier de config RetroArch d'une console.
-pub fn chemin_config(configs: &Path, console: Console) -> PathBuf {
-    configs.join(format!("{}.cfg", console.dossier()))
-}
-
-/// La config RetroArch écrite par SQUAD pour une console : plein écran, menu
-/// fermé, reprise automatique là où on s'était arrêté, rembobinage sur les
-/// consoles 8 et 16 bits.
-pub fn config_retroarch(console: Console, dossier_sauvegardes: &Path) -> String {
-    let sauvegardes = dossier_sauvegardes.join(console.dossier());
-    let sauvegardes = sauvegardes.to_string_lossy();
-    let rembobinage = matches!(console, Console::Nes | Console::Snes);
-    let mut lignes = vec![
-        "# Écrit par SQUAD//RETRO : ne pas modifier, ce fichier est réécrit.".to_string(),
-        r#"video_fullscreen = "true""#.into(),
-        r#"config_save_on_exit = "false""#.into(),
-        r#"pause_nonactive = "false""#.into(),
-        r#"quit_press_twice = "false""#.into(),
-        r#"input_exit_emulator = "escape""#.into(),
-        // Le menu RetroArch n'est jamais ouvert : SQUAD a le sien.
-        r#"input_menu_toggle = "nul""#.into(),
-        r#"input_menu_toggle_gamepad_combo = "0""#.into(),
-        r#"savestate_auto_save = "true""#.into(),
-        r#"savestate_auto_load = "true""#.into(),
-        format!(r#"savefile_directory = "{sauvegardes}""#),
-        format!(r#"savestate_directory = "{sauvegardes}""#),
-        r#"notification_show_autoconfig = "false""#.into(),
-    ];
-    lignes.push(format!(r#"rewind_enable = "{rembobinage}""#));
-    lignes.join("\n") + "\n"
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::region::Region;
-
-    fn emplacements() -> Emplacements {
-        Emplacements {
-            retroarch: "/emu/retroarch".into(),
-            cores: "/emu/cores".into(),
-            configs: "/squad/configs".into(),
-            dolphin: "/emu/dolphin".into(),
-            dossier_dolphin: "/squad/dolphin".into(),
-        }
-    }
-
-    fn variante(chemin: &str) -> Variante {
-        Variante {
-            chemin: chemin.into(),
-            nom: "Jeu".into(),
-            region: Region::Europe,
-            reconnu: true,
-            empreintes: None,
-        }
-    }
+    use std::fs;
 
     #[test]
-    fn commande_retroarch() {
-        let c = commande(
-            Console::Snes,
-            &variante("/roms/snes/a.sfc"),
-            &emplacements(),
-        );
-        assert_eq!(c.programme, PathBuf::from("/emu/retroarch"));
-        assert_eq!(c.arguments[0], "-L");
-        assert!(c.arguments[1].contains("snes9x_libretro."));
-        assert_eq!(c.arguments.last().unwrap(), "/roms/snes/a.sfc");
-    }
-
-    #[test]
-    fn commande_dolphin() {
-        let c = commande(
-            Console::Gamecube,
-            &variante("/roms/gc/mkdd.rvz"),
-            &emplacements(),
-        );
-        assert_eq!(
-            c.arguments,
-            vec!["-u", "/squad/dolphin", "-b", "-e", "/roms/gc/mkdd.rvz"]
-        );
-    }
-
-    #[test]
-    fn verifie_et_prepare() {
+    fn manques_puis_pret() {
         let dir = tempfile::tempdir().unwrap();
-        let exe = dir.path().join("retroarch.exe");
-        let ou = Emplacements::depuis_retroarch(&exe, &dir.path().join("donnees"));
+        let ou = Emplacements::geres(dir.path());
+        assert_eq!(manques(Console::Snes, &ou).len(), 2);
         assert!(verifier(Console::Snes, &ou)
             .unwrap_err()
             .contains("RetroArch"));
-        std::fs::write(&exe, b"").unwrap();
-        assert!(verifier(Console::Snes, &ou).unwrap_err().contains("snes9x"));
-        std::fs::create_dir_all(&ou.cores).unwrap();
-        std::fs::write(
-            ou.cores
-                .join(format!("snes9x_libretro.{}", extension_core())),
-            b"",
-        )
-        .unwrap();
+        fs::create_dir_all(&ou.cores).unwrap();
+        fs::write(&ou.retroarch, b"").unwrap();
+        fs::write(retroarch::fichier_core(&ou, "snes9x"), b"").unwrap();
         assert!(verifier(Console::Snes, &ou).is_ok());
-        preparer(Console::Snes, &ou, &dir.path().join("saves")).unwrap();
-        assert!(chemin_config(&ou.configs, Console::Snes).is_file());
+        // La PS1 a aussi besoin de son BIOS, que l'installation ne fournit pas.
+        fs::write(retroarch::fichier_core(&ou, "swanstation"), b"").unwrap();
+        let m = manques(Console::Ps1, &ou);
+        assert_eq!(m, vec![Manque::Bios]);
+        assert!(!m[0].installable());
     }
 
     #[test]
-    fn config_avec_rembobinage() {
-        let snes = config_retroarch(Console::Snes, Path::new("/saves"));
-        assert!(snes.contains(r#"rewind_enable = "true""#));
-        let n64 = config_retroarch(Console::N64, Path::new("/saves"));
-        assert!(n64.contains(r#"rewind_enable = "false""#));
+    fn commandes() {
+        let ou = Emplacements::geres(Path::new("/d"));
+        let c = commande(Console::Gamecube, Path::new("/r/mkdd.rvz"), &ou, None);
+        assert_eq!(c.programme, ou.dolphin);
+        assert!(c.arguments.contains(&"-b".to_string()));
+        let c = commande(Console::Snes, Path::new("/r/a.sfc"), &ou, None);
+        assert_eq!(c.arguments[0], "-L");
+        let (conv, sortie) = conversion(Console::Gamecube, Path::new("/r/jeu.iso"), &ou).unwrap();
+        assert_eq!(sortie, PathBuf::from("/r/jeu.rvz"));
+        assert_eq!(conv.arguments[0], "convert");
+        assert!(conversion(Console::Snes, Path::new("/r/a.sfc"), &ou).is_none());
     }
 }

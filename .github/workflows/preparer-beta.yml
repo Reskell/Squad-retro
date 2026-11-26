@@ -1,0 +1,26 @@
+# « Préparer la bêta » : télécharge les versions listées dans
+# manifestes/sources.json, calcule leurs empreintes et publie
+# manifestes/versions-beta.json. Seules les apps en canal bêta les installent.
+name: Préparer la bêta
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['manifestes/sources.json']
+
+permissions:
+  contents: write
+
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python .github/scripts/preparer_beta.py
+      - run: |
+          git config user.name "SQUAD//RETRO"
+          git config user.email "actions@github.com"
+          git add manifestes/versions-beta.json
+          git commit -m "Bêta : nouvelles versions à tester" || echo "Rien de neuf."
+          git push

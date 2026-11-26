@@ -18,6 +18,32 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+/// Le canal de mises à jour : la bande reste en stable, l'hôte du projet
+/// teste en bêta avant de valider pour tout le monde.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Canal {
+    #[default]
+    Stable,
+    Beta,
+}
+
+/// L'adresse des fichiers validés, publiés dans le dépôt Squad-retro.
+pub const BASE_MANIFESTES: &str =
+    "https://raw.githubusercontent.com/Reskell/Squad-retro/main/manifestes";
+
+impl Canal {
+    pub fn url_versions(self) -> String {
+        match self {
+            Canal::Stable => format!("{BASE_MANIFESTES}/versions.json"),
+            Canal::Beta => format!("{BASE_MANIFESTES}/versions-beta.json"),
+        }
+    }
+    pub fn url_catalogue() -> String {
+        format!("{BASE_MANIFESTES}/catalogue.json")
+    }
+}
+
 /// Un composant à installer (émulateur ou core).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Composant {
@@ -74,6 +100,11 @@ impl Validees {
                 Some(_) => None,
             })
             .collect()
+    }
+
+    /// Une révision plus ancienne que celle déjà appliquée est ignorée.
+    pub fn plus_recente_que(&self, revision: u32) -> bool {
+        self.revision > revision
     }
 
     /// Vrai si deux joueurs ont les mêmes versions pour ces composants

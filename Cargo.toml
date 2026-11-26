@@ -12,6 +12,9 @@ serde_json = "1"
 sha1 = "0.10"
 crc32fast = "1"
 quick-xml = "0.37"
+sha2 = "0.10"
+zip = { version = "4", default-features = false, features = ["deflate"] }
+sevenz-rust2 = { version = "0.26", default-features = false, features = ["util", "compress"] }
 
 [dev-dependencies]
 tempfile = "3"
