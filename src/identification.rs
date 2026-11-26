@@ -72,13 +72,13 @@ fn vers_z64(donnees: &[u8]) -> Vec<u8> {
     }
     match &donnees[..4] {
         [0x37, 0x80, 0x40, 0x12] => {
-            for paire in sortie.chunks_exact_mut(2) {
-                paire.swap(0, 1);
+            for i in (0..sortie.len() / 2 * 2).step_by(2) {
+                sortie.swap(i, i + 1);
             }
         }
         [0x40, 0x12, 0x37, 0x80] => {
-            for mot in sortie.chunks_exact_mut(4) {
-                mot.reverse();
+            for i in (0..sortie.len() / 4 * 4).step_by(4) {
+                sortie[i..i + 4].reverse();
             }
         }
         _ => {}
