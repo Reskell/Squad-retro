@@ -19,7 +19,8 @@
 //! - `versions`, `installation` : versions validées, installation vérifiée,
 //!   retour arrière, intégrité ;
 //! - `mods` : les variantes de jeux (patchs IPS/BPS) et leurs mises à jour ;
-//! - `netplay` : sessions, room, lien d'invitation, ping ;
+//! - `netplay`, `room_reseau` : sessions, room (et son petit serveur), lien
+//!   d'invitation, ping ;
 //! - `historique` : l'accueil « Reprendre » et le temps joué ;
 //! - `sauvegarde` : export et restauration complets ;
 //! - `diagnostic` : le rapport en un clic.
@@ -41,6 +42,7 @@ pub mod netplay;
 pub mod profil;
 pub mod region;
 pub mod retroarch;
+pub mod room_reseau;
 pub mod sauvegarde;
 pub mod versions;
 
