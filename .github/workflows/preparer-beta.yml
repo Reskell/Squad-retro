@@ -1,6 +1,7 @@
 # « Préparer la bêta » : télécharge les versions listées dans
-# manifestes/sources.json, calcule leurs empreintes et publie
-# manifestes/versions-beta.json. Seules les apps en canal bêta les installent.
+# manifestes/sources.json, calcule leurs empreintes, publie les cores dans une
+# version GitHub (adresse fixe), puis écrit manifestes/versions-beta.json.
+# Seules les apps en canal bêta installent ces versions.
 name: Préparer la bêta
 
 on:
@@ -18,6 +19,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python .github/scripts/preparer_beta.py
+      - name: Publier les cores (miroir)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ls miroir/* > /dev/null 2>&1; then
+            gh release create "$(cat etiquette.txt)" miroir/* --prerelease \
+              --title "Composants $(cat etiquette.txt)" \
+              --notes "Copies fixes des cores RetroArch pour SQUAD//RETRO (ne pas supprimer : les apps les téléchargent)."
+          fi
       - run: |
           git config user.name "SQUAD//RETRO"
           git config user.email "actions@github.com"

@@ -1,12 +1,37 @@
 {
-  "_explication": "Les versions à tester. Modifier une version ici, puis lancer l'action « Préparer la bêta » : elle télécharge chaque archive, calcule son empreinte et écrit versions-beta.json. Une fois testé, l'action « Valider pour tout le monde » copie la bêta en stable.",
+  "_explication": "Les versions à tester. Modifier une version ici (ou lancer l'action à la main) : « Préparer la bêta » télécharge chaque archive, calcule son empreinte et écrit versions-beta.json. Les cores RetroArch n'ont pas d'adresse fixe (nightly) : ils sont recopiés dans une version GitHub du dépôt (« miroir »), pour que l'adresse et l'empreinte ne changent plus. Une fois testé, « Valider pour tout le monde » copie la bêta en stable.",
   "composants": {
-    "retroarch": { "version": "1.21.0", "url": "https://buildbot.libretro.com/stable/1.21.0/windows/x86_64/RetroArch.7z" },
-    "shaders": { "version": "1.21.0", "url": "https://buildbot.libretro.com/assets/frontend/shaders_slang.zip" },
-    "core:mesen": { "version": "1.21.0", "url": "https://buildbot.libretro.com/stable/1.21.0/windows/x86_64/latest/mesen_libretro.dll.zip" },
-    "core:snes9x": { "version": "1.21.0", "url": "https://buildbot.libretro.com/stable/1.21.0/windows/x86_64/latest/snes9x_libretro.dll.zip" },
-    "core:mupen64plus_next": { "version": "1.21.0", "url": "https://buildbot.libretro.com/stable/1.21.0/windows/x86_64/latest/mupen64plus_next_libretro.dll.zip" },
-    "core:swanstation": { "version": "1.21.0", "url": "https://buildbot.libretro.com/stable/1.21.0/windows/x86_64/latest/swanstation_libretro.dll.zip" },
-    "dolphin": { "version": "2509", "url": "https://dl.dolphin-emu.org/releases/2509/dolphin-2509-x64.7z" }
+    "retroarch": {
+      "version": "1.21.0",
+      "url": "https://buildbot.libretro.com/stable/1.21.0/windows/x86_64/RetroArch.7z"
+    },
+    "shaders": {
+      "version": "1.21.0",
+      "url": "https://buildbot.libretro.com/assets/frontend/shaders_slang.zip"
+    },
+    "core:mesen": {
+      "version": "nightly",
+      "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/mesen_libretro.dll.zip",
+      "miroir": true
+    },
+    "core:snes9x": {
+      "version": "nightly",
+      "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/snes9x_libretro.dll.zip",
+      "miroir": true
+    },
+    "core:mupen64plus_next": {
+      "version": "nightly",
+      "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/mupen64plus_next_libretro.dll.zip",
+      "miroir": true
+    },
+    "core:swanstation": {
+      "version": "nightly",
+      "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/swanstation_libretro.dll.zip",
+      "miroir": true
+    },
+    "dolphin": {
+      "version": "2509",
+      "url": "https://dl.dolphin-emu.org/releases/2509/dolphin-2509-x64.7z"
+    }
   }
 }
