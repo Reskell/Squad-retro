@@ -1,5 +1,5 @@
 {
-  "revision": 3,
+  "revision": 4,
   "composants": {
     "retroarch": {
       "version": "1.21.0",
@@ -13,23 +13,73 @@
     },
     "core:mesen": {
       "version": "20261126",
-      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r3/mesen_libretro.dll.zip",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r4/mesen_libretro.dll.zip",
       "sha256": "7814800b47c76a515efc7f4c5597c81b04ee25a3b7cf2bb4fbace5e691d93480"
     },
     "core:snes9x": {
       "version": "20261126",
-      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r3/snes9x_libretro.dll.zip",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r4/snes9x_libretro.dll.zip",
       "sha256": "4c2b18e693d4bce5c7c88fd927839e8b09e6791104773053766ba2707413ecce"
     },
     "core:mupen64plus_next": {
       "version": "20261126",
-      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r3/mupen64plus_next_libretro.dll.zip",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r4/mupen64plus_next_libretro.dll.zip",
       "sha256": "f9666e800feb057575b333608bd44223e4a8f2e7267678ffa1e8dec3052e7cee"
     },
     "core:swanstation": {
       "version": "20261126",
-      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r3/swanstation_libretro.dll.zip",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r4/swanstation_libretro.dll.zip",
       "sha256": "8a4736aa65232417bbd3f66a17a297b54a2dfc0dffdad9e2a4e6a828bd7608a8"
+    },
+    "core:gambatte": {
+      "version": "20261126",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r4/gambatte_libretro.dll.zip",
+      "sha256": "e39c345b415e6bae290913bef31a590c41050bfdff12975c82efe429218a9f34"
+    },
+    "core:mgba": {
+      "version": "20261126",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r4/mgba_libretro.dll.zip",
+      "sha256": "e86025fa6855166c8f680aad8296fc38d3dfc32c43c1d8a670e5d61866571b62"
+    },
+    "core:melondsds": {
+      "version": "20261126",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r4/melondsds_libretro.dll.zip",
+      "sha256": "27024b0ea21a2932b51e7f52e1339b21c4267ce582feb0b1e66a8651b49a6001"
+    },
+    "core:genesis_plus_gx": {
+      "version": "20261126",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r4/genesis_plus_gx_libretro.dll.zip",
+      "sha256": "9c7c6fae853ac425e7360ba1ba61a2213cec1d143336cd3f320fe53c0c45b654"
+    },
+    "core:mednafen_pce_fast": {
+      "version": "20261126",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r4/mednafen_pce_fast_libretro.dll.zip",
+      "sha256": "42490cefe8e5040c206a11f439a2e528456aa630bb248e5727a7f4cb171ac11e"
+    },
+    "core:mednafen_saturn": {
+      "version": "20261126",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r4/mednafen_saturn_libretro.dll.zip",
+      "sha256": "dc8bccba3b580f141263c7d2304edf32f91287ed2ea1e6ef3c77b0e0450a6eef"
+    },
+    "core:flycast": {
+      "version": "20261126",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r4/flycast_libretro.dll.zip",
+      "sha256": "6a33e7f77ebe3640af6131fad256fdb61ff05fc273143cd28f450a12315abc4b"
+    },
+    "core:ppsspp": {
+      "version": "20261126",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r4/ppsspp_libretro.dll.zip",
+      "sha256": "aac356f0db8cd616c2da2bb06d4322fc4b27b8b8bc3445299c63b7b5295b758b"
+    },
+    "core:pcsx2": {
+      "version": "20261126",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r4/pcsx2_libretro.dll.zip",
+      "sha256": "3da611d5c9afa30f09145cf7703fdac1f1e8dd7af78ac84f4d63cc437ee64238"
+    },
+    "core:fbneo": {
+      "version": "20261126",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r4/fbneo_libretro.dll.zip",
+      "sha256": "dfdc0ae6fbc32aabf65a4fdaa7790c0697a02f19623d6df4804e1c4355c3f6f8"
     },
     "dolphin": {
       "version": "2509",
