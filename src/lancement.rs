@@ -59,7 +59,7 @@ impl Manque {
                 console.nom()
             ),
             Manque::Dolphin => "Dolphin (GameCube et Wii) n'est pas encore installé : lance l'installation des émulateurs.".into(),
-            Manque::Bios => "La PlayStation a besoin de son BIOS : copie celui de ta console (scph5502.bin pour une console européenne) dans le dossier BIOS.".into(),
+            Manque::Bios => console.aide_bios().into(),
         }
     }
 
@@ -87,7 +87,7 @@ pub fn manques(console: Console, ou: &Emplacements) -> Vec<Manque> {
             }
         }
     }
-    if console.demande_un_bios() && retroarch::bios_ps1(ou).is_none() {
+    if console.demande_un_bios() && retroarch::bios_de(console, ou).is_none() {
         m.push(Manque::Bios);
     }
     m

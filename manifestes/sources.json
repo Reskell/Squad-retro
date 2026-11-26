@@ -29,6 +29,56 @@
       "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/swanstation_libretro.dll.zip",
       "miroir": true
     },
+    "core:gambatte": {
+      "version": "nightly",
+      "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/gambatte_libretro.dll.zip",
+      "miroir": true
+    },
+    "core:mgba": {
+      "version": "nightly",
+      "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/mgba_libretro.dll.zip",
+      "miroir": true
+    },
+    "core:melondsds": {
+      "version": "nightly",
+      "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/melondsds_libretro.dll.zip",
+      "miroir": true
+    },
+    "core:genesis_plus_gx": {
+      "version": "nightly",
+      "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/genesis_plus_gx_libretro.dll.zip",
+      "miroir": true
+    },
+    "core:mednafen_pce_fast": {
+      "version": "nightly",
+      "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/mednafen_pce_fast_libretro.dll.zip",
+      "miroir": true
+    },
+    "core:mednafen_saturn": {
+      "version": "nightly",
+      "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/mednafen_saturn_libretro.dll.zip",
+      "miroir": true
+    },
+    "core:flycast": {
+      "version": "nightly",
+      "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/flycast_libretro.dll.zip",
+      "miroir": true
+    },
+    "core:ppsspp": {
+      "version": "nightly",
+      "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/ppsspp_libretro.dll.zip",
+      "miroir": true
+    },
+    "core:pcsx2": {
+      "version": "nightly",
+      "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/pcsx2_libretro.dll.zip",
+      "miroir": true
+    },
+    "core:fbneo": {
+      "version": "nightly",
+      "url": "https://buildbot.libretro.com/nightly/windows/x86_64/latest/fbneo_libretro.dll.zip",
+      "miroir": true
+    },
     "dolphin": {
       "version": "2509",
       "url": "https://dl.dolphin-emu.org/releases/2509/dolphin-2509-x64.7z"

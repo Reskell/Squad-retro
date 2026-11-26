@@ -24,7 +24,18 @@ pub const TAILLE_MAX_EMPREINTE: u64 = 128 * 1024 * 1024;
 
 /// Vrai si on sait calculer une empreinte comparable aux bases pour cette console.
 pub fn empreinte_utile(console: Console) -> bool {
-    matches!(console, Console::Nes | Console::Snes | Console::N64)
+    matches!(
+        console,
+        Console::Nes
+            | Console::Snes
+            | Console::N64
+            | Console::Gb
+            | Console::Gba
+            | Console::Nds
+            | Console::Mastersystem
+            | Console::Megadrive
+            | Console::Pcengine
+    )
 }
 
 /// Calcule les empreintes d'un fichier.

@@ -116,6 +116,16 @@ pub fn nom_core_retroarch(console: Console) -> &'static str {
         Console::Snes => "Snes9x",
         Console::N64 => "Mupen64Plus-Next",
         Console::Ps1 => "SwanStation",
+        Console::Gb => "Gambatte",
+        Console::Gba => "mGBA",
+        Console::Nds => "melonDS DS",
+        Console::Mastersystem | Console::Megadrive => "Genesis Plus GX",
+        Console::Pcengine => "Beetle PCE Fast",
+        Console::Saturn => "Beetle Saturn",
+        Console::Dreamcast => "Flycast",
+        Console::Psp => "PPSSPP",
+        Console::Ps2 => "LRPS2",
+        Console::Arcade => "FinalBurn Neo",
         Console::Gamecube | Console::Wii => "",
     }
 }

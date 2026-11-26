@@ -255,6 +255,11 @@ pub fn boutons(console: Console) -> &'static [BoutonConsole] {
         Console::N64 => N64,
         Console::Ps1 => PS1,
         Console::Gamecube | Console::Wii => GAMECUBE,
+        // Les autres reprennent la manette la plus proche : le moteur
+        // RetroArch parle partout le même « RetroPad ».
+        Console::Gb | Console::Mastersystem | Console::Pcengine => NES,
+        Console::Gba | Console::Nds | Console::Megadrive | Console::Saturn | Console::Arcade => SNES,
+        Console::Dreamcast | Console::Psp | Console::Ps2 => PS1,
     }
 }
 

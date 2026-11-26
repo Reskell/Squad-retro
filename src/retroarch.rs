@@ -214,6 +214,16 @@ pub const BIOS_PS1: [&str; 6] = [
 /// Un BIOS PS1 fait exactement 512 Kio.
 pub const TAILLE_BIOS_PS1: u64 = 512 * 1024;
 
+/// Le BIOS d'une console, présent et de la bonne taille, s'il y en a un.
+pub fn bios_de(console: Console, ou: &Emplacements) -> Option<PathBuf> {
+    console
+        .bios()
+        .iter()
+        .map(|(n, t)| (ou.bios().join(n), *t))
+        .find(|(p, t)| fs::metadata(p).map(|m| m.len() == *t).unwrap_or(false))
+        .map(|(p, _)| p)
+}
+
 /// Le BIOS PS1 présent et valide, s'il y en a un.
 pub fn bios_ps1(ou: &Emplacements) -> Option<PathBuf> {
     BIOS_PS1.iter().map(|n| ou.bios().join(n)).find(|p| {

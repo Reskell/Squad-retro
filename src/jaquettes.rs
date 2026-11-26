@@ -17,6 +17,17 @@ fn systeme_libretro(console: Console) -> &'static str {
         Console::Ps1 => "Sony - PlayStation",
         Console::Gamecube => "Nintendo - GameCube",
         Console::Wii => "Nintendo - Wii",
+        Console::Gb => "Nintendo - Game Boy Color",
+        Console::Gba => "Nintendo - Game Boy Advance",
+        Console::Nds => "Nintendo - Nintendo DS",
+        Console::Mastersystem => "Sega - Master System - Mark III",
+        Console::Megadrive => "Sega - Mega Drive - Genesis",
+        Console::Pcengine => "NEC - PC Engine - TurboGrafx 16",
+        Console::Saturn => "Sega - Saturn",
+        Console::Dreamcast => "Sega - Dreamcast",
+        Console::Psp => "Sony - PlayStation Portable",
+        Console::Ps2 => "Sony - PlayStation 2",
+        Console::Arcade => "FBNeo - Arcade Games",
     }
 }
 
