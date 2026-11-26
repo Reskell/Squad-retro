@@ -275,6 +275,7 @@ mod tests {
             pret: false,
             versions: Installees::new(),
             sha1: "aaa".into(),
+            avatar: None,
         }
     }
 

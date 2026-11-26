@@ -127,6 +127,9 @@ pub struct Place {
     pub versions: Installees,
     /// L'empreinte SHA-1 de son fichier de jeu.
     pub sha1: String,
+    /// Son avatar SQUAD (absent chez les versions plus anciennes).
+    #[serde(default)]
+    pub avatar: Option<crate::avatar::Avatar>,
 }
 
 /// Où en est la room.
@@ -383,6 +386,7 @@ mod tests {
             pret: false,
             versions,
             sha1: sha1.into(),
+            avatar: None,
         }
     }
 

@@ -23,8 +23,11 @@
 //!   d'invitation, ping ;
 //! - `historique` : l'accueil « Reprendre » et le temps joué ;
 //! - `sauvegarde` : export et restauration complets ;
-//! - `diagnostic` : le rapport en un clic.
+//! - `diagnostic` : le rapport en un clic ;
+//! - `avatar` : profils SQUAD, avatars et joueurs croisés (la plaza) ;
+//! - `jaquettes` : l'adresse de la jaquette de chaque jeu.
 
+pub mod avatar;
 pub mod bibliotheque;
 pub mod catalogue;
 pub mod consoles;
@@ -35,6 +38,7 @@ pub mod emplacements;
 pub mod historique;
 pub mod identification;
 pub mod installation;
+pub mod jaquettes;
 pub mod lancement;
 pub mod manettes;
 pub mod mods;
