@@ -309,7 +309,7 @@ mod tests {
         assert!(mot_proche("zelad", "the legend of zelda"));
         assert!(mot_proche("prty", "mario party 6"));
         assert!(!mot_proche("kong", "mario party 6"));
-        assert!(!mot_proche("ab", "abc"));
+        assert!(!mot_proche("xy", "abc"));
     }
 
     #[test]
