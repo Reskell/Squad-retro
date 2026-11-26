@@ -7,7 +7,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Une console prise en charge.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Console {
     Nes,
