@@ -121,19 +121,33 @@ pub fn installer(
         ));
     }
     let cible = cible(nom, ou).ok_or_else(|| format!("Composant inconnu : {nom}"))?;
-    let temporaire = ou
-        .emulateurs()
-        .join(format!(".installation-{}", nom.replace(':', "-")));
+    // Un dossier temporaire propre à cette installation : deux installations
+    // lancées en même temps ne se marchent plus dessus.
+    let unique = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or_default();
+    let temporaire = ou.emulateurs().join(format!(
+        ".installation-{}-{}-{unique}",
+        nom.replace(':', "-"),
+        std::process::id()
+    ));
     let _ = fs::remove_dir_all(&temporaire);
     fs::create_dir_all(&temporaire).map_err(|e| e.to_string())?;
-    decompresser(archive, &composant.url, &temporaire)?;
+    if let Err(e) = decompresser(archive, &composant.url, &temporaire) {
+        let _ = fs::remove_dir_all(&temporaire);
+        return Err(e);
+    }
     let source = dossier_utile(&temporaire);
 
     let mut etat = Etat::charger(ou);
     let precedente = etat.composants.get(nom).map(|i| i.version.clone());
     let fichiers = match &cible {
         Cible::Dossier { dossier, garder } => {
-            remplacer_dossier(&source, dossier, garder, nom, precedente.as_deref(), ou)?;
+            if let Err(e) = remplacer_dossier(&source, dossier, garder, nom, precedente.as_deref(), ou) {
+                let _ = fs::remove_dir_all(&temporaire);
+                return Err(e);
+            }
             inventaire(dossier, garder)
         }
         Cible::Fichiers { dossier } => {
@@ -194,15 +208,24 @@ fn remplacer_dossier(
         fs::rename(dossier, &rangement).map_err(|e| {
             format!("Impossible de ranger l'ancienne version (un jeu tourne-t-il ?) : {e}")
         })?;
-        copier_dossier(source, dossier)?;
-        for g in garder {
-            let ancien = rangement.join(g);
-            if ancien.exists() && !dossier.join(g).exists() {
-                copier_dossier(&ancien, &dossier.join(g))?;
+        let copie = copier_dossier(source, dossier).and_then(|_| {
+            for g in garder {
+                let ancien = rangement.join(g);
+                if ancien.exists() && !dossier.join(g).exists() {
+                    copier_dossier(&ancien, &dossier.join(g))?;
+                }
             }
+            Ok(())
+        });
+        if let Err(e) = copie {
+            // Échec en cours de route : on remet l'ancien dossier tel quel.
+            let _ = fs::remove_dir_all(dossier);
+            let _ = fs::rename(&rangement, dossier);
+            return Err(e);
         }
-    } else {
-        copier_dossier(source, dossier)?;
+    } else if let Err(e) = copier_dossier(source, dossier) {
+        let _ = fs::remove_dir_all(dossier);
+        return Err(e);
     }
     Ok(())
 }
@@ -265,6 +288,17 @@ pub fn retour_arriere(nom: &str, ou: &Emplacements) -> Result<String, String> {
     }
     etat.ecrire(ou).map_err(|e| e.to_string())?;
     Ok(precedente)
+}
+
+/// Les composants installés dont des fichiers manquent ou sont abîmés :
+/// à réinstaller même si leur version est la bonne.
+pub fn a_reparer(ou: &Emplacements) -> Vec<String> {
+    Etat::charger(ou)
+        .composants
+        .keys()
+        .filter(|n| !verifier_integrite(n, ou).is_empty())
+        .cloned()
+        .collect()
 }
 
 /// Les fichiers d'un composant manquants ou de taille changée (vide = intact).
@@ -455,6 +489,27 @@ mod tests {
             Etat::charger(&ou).versions().get("retroarch").unwrap(),
             "1.0"
         );
+    }
+
+    #[test]
+    fn repere_ce_qui_est_a_reparer() {
+        let dir = tempfile::tempdir().unwrap();
+        let ou = Emplacements::geres(dir.path());
+        let core = zip_avec(&[("mesen_libretro.dll", b"core")]);
+        installer("core:mesen", &composant("1", &core, "c.zip"), &core, &ou).unwrap();
+        assert!(a_reparer(&ou).is_empty());
+        fs::remove_file(ou.cores.join("mesen_libretro.dll")).unwrap();
+        assert_eq!(a_reparer(&ou), vec!["core:mesen".to_string()]);
+        // La réinstaller répare.
+        installer("core:mesen", &composant("1", &core, "c.zip"), &core, &ou).unwrap();
+        assert!(a_reparer(&ou).is_empty());
+        // Aucun dossier temporaire ne traîne.
+        let restes: Vec<_> = fs::read_dir(ou.emulateurs())
+            .unwrap()
+            .flatten()
+            .filter(|e| e.file_name().to_string_lossy().starts_with(".installation"))
+            .collect();
+        assert!(restes.is_empty());
     }
 
     #[test]
