@@ -1,0 +1,17 @@
+[package]
+name = "squad_retro"
+version = "0.1.0"
+description = "SQUAD//RETRO : le moteur du launcher rétro de la bande (bibliothèque, identification des jeux, lancement des émulateurs)"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha1 = "0.10"
+crc32fast = "1"
+quick-xml = "0.37"
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,0 +1,22 @@
+# Lance les tests du moteur à chaque envoi, sous Windows (le PC de la bande)
+# et sous Linux.
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: swatinem/rust-cache@v2
+      - run: cargo test
+      - run: cargo clippy -- -D warnings
