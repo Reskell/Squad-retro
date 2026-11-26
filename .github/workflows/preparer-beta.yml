@@ -34,3 +34,17 @@ jobs:
           git add manifestes/versions-beta.json
           git commit -m "Bêta : nouvelles versions à tester" || echo "Rien de neuf."
           git push
+
+  verifier:
+    # Installe pour de vrai chaque composant sur Windows avec le moteur et
+    # vérifie que chaque console est prête : une bêta cassée se voit ici,
+    # pas chez quelqu'un.
+    needs: beta
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+      - run: cargo run --release --example installer_beta -- manifestes/versions-beta.json

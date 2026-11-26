@@ -18,3 +18,4 @@ sevenz-rust2 = { version = "0.26", default-features = false, features = ["util",
 
 [dev-dependencies]
 tempfile = "3"
+ureq = "2"
