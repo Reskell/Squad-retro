@@ -47,6 +47,9 @@ pub struct Session {
     /// peuvent pas être ouverts. None = connexion directe (avec UPnP).
     #[serde(default)]
     pub relais: Option<String>,
+    /// Le port manette choisi dans le salon (1 = joueur 1).
+    #[serde(default)]
+    pub port_manette: Option<u8>,
 }
 
 impl Session {
@@ -86,6 +89,12 @@ impl Session {
         }
         if let Some(m) = &self.mot_de_passe {
             l.push(format!(r#"netplay_password = "{}""#, echapper(m)));
+        }
+        // Un invité demande le port manette choisi dans le salon.
+        if let (Role::Rejoindre { .. }, Some(p)) = (&self.role, self.port_manette) {
+            if (1..=16).contains(&p) {
+                l.push(format!(r#"netplay_request_device_p{p} = "true""#));
+            }
         }
         l
     }
@@ -130,6 +139,16 @@ pub struct Place {
     /// Son avatar SQUAD (absent chez les versions plus anciennes).
     #[serde(default)]
     pub avatar: Option<crate::avatar::Avatar>,
+    /// Son port manette (1 = joueur 1), attribué à l'entrée, échangeable.
+    #[serde(default)]
+    pub port: Option<u8>,
+}
+
+/// Un message du chat de la room.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MessageRoom {
+    pub pseudo: String,
+    pub texte: String,
 }
 
 /// Où en est la room.
@@ -158,6 +177,15 @@ pub struct Room {
     pub privee: bool,
     pub places: Vec<Place>,
     pub etat: Etat,
+    /// Le chat (les 50 derniers messages).
+    #[serde(default)]
+    pub messages: Vec<MessageRoom>,
+    /// Les joueurs exclus par l'hôte : ils ne peuvent pas revenir.
+    #[serde(default)]
+    pub exclus: Vec<String>,
+    /// Les places gardées pour des potes précis.
+    #[serde(default)]
+    pub reserves: Vec<String>,
 }
 
 /// Les composants dont la version doit être identique, par console.
@@ -187,9 +215,71 @@ impl Room {
             hote: hote.pseudo.clone(),
             max: max.max(2),
             privee,
-            places: vec![hote],
+            places: vec![Place { port: Some(1), ..hote }],
             etat: Etat::Attente,
+            messages: Vec::new(),
+            exclus: Vec::new(),
+            reserves: Vec::new(),
         }
+    }
+
+    fn port_libre(&self) -> Option<u8> {
+        (1..=self.max.min(16) as u8).find(|n| !self.places.iter().any(|p| p.port == Some(*n)))
+    }
+
+    /// Un message dans le chat (200 caractères au plus, 50 messages gardés).
+    pub fn dire(&mut self, pseudo: &str, texte: &str) -> bool {
+        let texte: String = texte.trim().chars().filter(|c| !c.is_control()).take(200).collect();
+        if texte.is_empty() || !self.places.iter().any(|p| p.pseudo == pseudo) {
+            return false;
+        }
+        self.messages.push(MessageRoom { pseudo: pseudo.into(), texte });
+        let trop = self.messages.len().saturating_sub(50);
+        self.messages.drain(..trop);
+        true
+    }
+
+    /// Prend un port manette ; s'il est pris, les deux joueurs échangent.
+    pub fn choisir_port(&mut self, pseudo: &str, port: u8) -> Result<(), String> {
+        if port == 0 || port as usize > self.max.min(16) {
+            return Err(format!("Les ports vont de 1 à {}.", self.max.min(16)));
+        }
+        let Some(i) = self.places.iter().position(|p| p.pseudo == pseudo) else {
+            return Err("Tu n'es pas dans la room.".into());
+        };
+        let ancien = self.places[i].port;
+        if let Some(autre) = self.places.iter_mut().find(|p| p.port == Some(port)) {
+            autre.port = ancien;
+        }
+        self.places[i].port = Some(port);
+        Ok(())
+    }
+
+    /// L'hôte exclut un joueur : il sort et ne peut plus revenir.
+    pub fn exclure(&mut self, pseudo: &str) -> bool {
+        if pseudo == self.hote || !self.places.iter().any(|p| p.pseudo == pseudo) {
+            return false;
+        }
+        self.quitter(pseudo);
+        self.exclus.push(pseudo.to_lowercase());
+        true
+    }
+
+    /// L'hôte garde une place pour un pote (ou la libère s'il la gardait déjà).
+    pub fn reserver(&mut self, pseudo: &str) -> Result<(), String> {
+        let p = pseudo.trim();
+        if p.is_empty() {
+            return Ok(());
+        }
+        if let Some(i) = self.reserves.iter().position(|r| r.eq_ignore_ascii_case(p)) {
+            self.reserves.remove(i);
+            return Ok(());
+        }
+        if self.reserves.len() + 1 >= self.max {
+            return Err("Plus de place à réserver.".into());
+        }
+        self.reserves.push(p.chars().take(24).collect());
+        Ok(())
     }
 
     /// Fait entrer un joueur, après vérification du fichier et des versions.
@@ -202,6 +292,18 @@ impl Room {
         }
         if self.places.len() >= self.max {
             return Err("La room est complète.".into());
+        }
+        if self.exclus.contains(&joueur.pseudo.to_lowercase()) {
+            return Err("L'hôte t'a retiré de cette room.".into());
+        }
+        let reserve = self.reserves.iter().any(|r| r.eq_ignore_ascii_case(&joueur.pseudo));
+        let gardees = self
+            .reserves
+            .iter()
+            .filter(|r| !self.places.iter().any(|p| p.pseudo.eq_ignore_ascii_case(r)))
+            .count();
+        if !reserve && self.max - self.places.len() <= gardees {
+            return Err("Les places restantes sont réservées à des potes de l'hôte.".into());
         }
         if joueur.sha1 != self.sha1 {
             return Err(format!(
@@ -221,7 +323,8 @@ impl Room {
                 ));
             }
         }
-        self.places.push(joueur);
+        let port = self.port_libre();
+        self.places.push(Place { port, ..joueur });
         Ok(())
     }
 
@@ -387,6 +490,7 @@ mod tests {
             versions,
             sha1: sha1.into(),
             avatar: None,
+            port: None,
         }
     }
 
@@ -449,6 +553,7 @@ mod tests {
             pseudo: "Swift".into(),
             mot_de_passe: Some("x\"y".into()),
             relais: Some("madrid".into()),
+            port_manette: None,
         };
         assert_eq!(
             s.arguments_retroarch()[..2],
@@ -466,5 +571,56 @@ mod tests {
         let port = ecoute.local_addr().unwrap().port();
         let p = mesurer_ping("127.0.0.1", port, Duration::from_secs(1)).unwrap();
         assert_eq!(qualite(p), "Excellente");
+    }
+}
+
+#[cfg(test)]
+mod tests_salon {
+    use super::*;
+
+    fn joueur(p: &str) -> Place {
+        Place { pseudo: p.into(), pret: false, versions: Installees::new(), sha1: "s".into(), avatar: None, port: None }
+    }
+
+    #[test]
+    fn chat_ports_exclusion_reserves() {
+        let mut r = Room::nouvelle("r", Console::Gamecube, "Mario Party 6", joueur("Swift"), 4, false);
+        assert_eq!(r.places[0].port, Some(1));
+        r.rejoindre(joueur("Bront")).unwrap();
+        assert_eq!(r.places[1].port, Some(2));
+        // Échange de ports.
+        r.choisir_port("Bront", 1).unwrap();
+        assert_eq!((r.places[0].port, r.places[1].port), (Some(2), Some(1)));
+        assert!(r.choisir_port("Bront", 9).is_err());
+        // Chat.
+        assert!(r.dire("Bront", "  salut\\n "));
+        assert!(!r.dire("Inconnu", "coucou"));
+        assert!(!r.dire("Bront", "   "));
+        for i in 0..60 {
+            r.dire("Swift", &format!("m{i}"));
+        }
+        assert_eq!(r.messages.len(), 50);
+        // Réservations : 4 places, 2 prises, 2 réservées → un inconnu est refusé.
+        r.reserver("Vesper").unwrap();
+        r.reserver("Lucie").unwrap();
+        assert!(r.rejoindre(joueur("Tibo")).unwrap_err().contains("réservées"));
+        r.rejoindre(joueur("vesper")).unwrap();
+        assert_eq!(r.places[2].port, Some(3));
+        // Exclusion définitive.
+        assert!(r.exclure("Bront"));
+        assert!(!r.exclure("Swift"));
+        assert!(r.rejoindre(joueur("Bront")).unwrap_err().contains("retiré"));
+    }
+
+    #[test]
+    fn port_demande_par_l_invite() {
+        let s = Session {
+            role: Role::Rejoindre { adresse: "1.2.3.4".into(), port: 55435 },
+            pseudo: "Bront".into(),
+            mot_de_passe: None,
+            relais: None,
+            port_manette: Some(2),
+        };
+        assert!(s.config_retroarch().iter().any(|l| l == r#"netplay_request_device_p2 = "true""#));
     }
 }

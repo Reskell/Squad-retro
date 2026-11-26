@@ -15,13 +15,19 @@ use std::path::Path;
 /// statistiques envoyées, pas de mise à jour par Dolphin lui-même (c'est
 /// SQUAD qui choisit la version).
 pub fn dolphin_ini(session: Option<&Session>) -> String {
+    dolphin_ini_avec(session, 100)
+}
+
+/// Dolphin.ini avec le volume du jeu (0 à 100).
+pub fn dolphin_ini_avec(session: Option<&Session>, volume: u8) -> String {
     let mut ini = String::from(
         "[Interface]\nConfirmStop = False\nUsePanicHandlers = False\nOnScreenDisplayMessages = True\nShowActiveTitle = False\n\
          [Display]\nFullscreen = True\nRenderToMain = False\n\
-         [Core]\nSIDevice0 = 6\nWiiKeyboard = False\n\
+         [Core]\nSIDevice0 = 6\nSIDevice1 = 6\nSIDevice2 = 6\nSIDevice3 = 6\nWiiKeyboard = False\n\
          [Analytics]\nEnabled = False\nPermissionAsked = True\n\
          [AutoUpdate]\nUpdateTrack = \n",
     );
+    ini.push_str(&format!("[DSP]\nVolume = {}\n", volume.min(100)));
     if let Some(s) = session {
         ini.push_str(&s.netplay_dolphin());
     }
@@ -105,14 +111,14 @@ pub fn preparer(
 ) -> io::Result<()> {
     let config = ou.dossier_dolphin().join("Config");
     fs::create_dir_all(&config)?;
-    fs::write(config.join("Dolphin.ini"), dolphin_ini(session))?;
+    fs::write(config.join("Dolphin.ini"), dolphin_ini_avec(session, profil.volume))?;
     fs::write(config.join("GFX.ini"), gfx_ini(profil))?;
     fs::write(config.join("Hotkeys.ini"), hotkeys_ini())?;
     let mapping = profil
         .mapping
         .clone()
         .unwrap_or_else(|| Mapping::par_defaut(console));
-    fs::write(config.join("GCPadNew.ini"), mapping.gcpad_dolphin(console))?;
+    fs::write(config.join("GCPadNew.ini"), mapping.gcpad_dolphin_avec(console, profil.vibration))?;
     if console == Console::Wii {
         fs::write(config.join("WiimoteNew.ini"), wiimote_ini(profil))?;
     }

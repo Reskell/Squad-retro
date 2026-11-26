@@ -41,6 +41,9 @@ pub struct ModRetro {
     /// Les notes de version, affichées avant la mise à jour.
     #[serde(default)]
     pub notes: String,
+    /// Le menu d'options standard du mod (même présentation pour tous).
+    #[serde(default)]
+    pub options: Vec<crate::triches::OptionMod>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -91,6 +94,11 @@ impl Installes {
             serde_json::to_string_pretty(self).unwrap_or_default(),
         )
     }
+    /// Le mod installé dont ce fichier est la variante.
+    pub fn mod_du_fichier(&self, fichier: &Path) -> Option<&str> {
+        self.0.iter().find(|(_, i)| i.fichier == fichier).map(|(id, _)| id.as_str())
+    }
+
     /// Les mods dont une version plus récente est au catalogue.
     pub fn a_mettre_a_jour<'a>(&self, catalogue: &'a CatalogueMods) -> Vec<&'a ModRetro> {
         catalogue
@@ -397,10 +405,12 @@ mod tests {
             format: Format::Ips,
             auteur: String::new(),
             notes: String::new(),
+            options: Vec::new(),
         };
         let mut installes = Installes::default();
         let v1 = installer(&m, &base, &p, &dir.path().join("variantes"), &mut installes).unwrap();
         assert_eq!(fs::read(&v1).unwrap(), b"Zbcdef");
+        assert_eq!(installes.mod_du_fichier(&v1), Some("jeu-coop"));
         assert!(v1.to_string_lossy().contains("Jeu [Coop v1.0].sfc"));
 
         let mut catalogue = CatalogueMods {

@@ -25,7 +25,8 @@
 //! - `sauvegarde` : export et restauration complets ;
 //! - `diagnostic` : le rapport en un clic ;
 //! - `avatar` : profils SQUAD, avatars et joueurs croisés (la plaza) ;
-//! - `jaquettes` : l'adresse de la jaquette de chaque jeu.
+//! - `jaquettes` : l'adresse de la jaquette de chaque jeu ;
+//! - `triches` : codes de triche et menu d'options des mods.
 
 pub mod avatar;
 pub mod bibliotheque;
@@ -48,6 +49,7 @@ pub mod region;
 pub mod retroarch;
 pub mod room_reseau;
 pub mod sauvegarde;
+pub mod triches;
 pub mod versions;
 
 pub use bibliotheque::{Bibliotheque, Fiche, Variante};

@@ -25,9 +25,15 @@ pub enum Demande {
     },
     Pret,
     Quitter,
+    /// Un message dans le chat.
+    Message { texte: String },
+    /// Choisir son port manette.
+    Port { port: u8 },
 }
 
-/// Ce que la room envoie aux joueurs.
+/// Ce que la room envoie aux joueurs (la room est grosse, mais c'est le
+/// message de loin le plus fréquent : pas la peine de la mettre en boîte).
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Nouvelle {
@@ -150,6 +156,16 @@ impl ServeurRoom {
                     }
                 }
                 Demande::Quitter => break,
+                Demande::Message { texte } => {
+                    if let Some(p) = &pseudo {
+                        self.room.lock().unwrap().dire(p, &texte);
+                    }
+                }
+                Demande::Port { port } => {
+                    if let Some(p) = &pseudo {
+                        let _ = self.room.lock().unwrap().choisir_port(p, port);
+                    }
+                }
             }
             self.diffuser();
         }
@@ -181,6 +197,45 @@ impl ServeurRoom {
         let hote = self.room.lock().unwrap().hote.clone();
         self.room.lock().unwrap().basculer_pret(&hote);
         self.diffuser();
+    }
+
+    /// Un message de l'hôte dans le chat.
+    pub fn dire_hote(&self, texte: &str) {
+        let hote = self.room.lock().unwrap().hote.clone();
+        if self.room.lock().unwrap().dire(&hote, texte) {
+            self.diffuser();
+        }
+    }
+
+    /// L'hôte choisit son port manette.
+    pub fn port_hote(&self, port: u8) -> Result<(), String> {
+        let hote = self.room.lock().unwrap().hote.clone();
+        self.room.lock().unwrap().choisir_port(&hote, port)?;
+        self.diffuser();
+        Ok(())
+    }
+
+    /// L'hôte retire un joueur (il ne peut plus revenir).
+    pub fn exclure(&self, pseudo: &str) -> bool {
+        if !self.room.lock().unwrap().exclure(pseudo) {
+            return false;
+        }
+        let mut abonnes = self.abonnes.lock().unwrap();
+        for (_, f) in abonnes.iter_mut().filter(|(n, _)| n == pseudo) {
+            envoyer(f, &Nouvelle::Refus { raison: "L'hôte t'a retiré de la room.".into() });
+            let _ = f.shutdown(Shutdown::Both);
+        }
+        abonnes.retain(|(n, _)| n != pseudo);
+        drop(abonnes);
+        self.diffuser();
+        true
+    }
+
+    /// L'hôte garde (ou libère) une place pour un pote.
+    pub fn reserver(&self, pseudo: &str) -> Result<(), String> {
+        self.room.lock().unwrap().reserver(pseudo)?;
+        self.diffuser();
+        Ok(())
     }
 
     /// L'hôte lance le compte à rebours.
@@ -252,6 +307,14 @@ impl ClientRoom {
             .map_err(|_| "La room est fermée.".to_string())
     }
 
+    pub fn dire(&self, texte: &str) -> Result<(), String> {
+        self.envoyer(&Demande::Message { texte: texte.into() })
+    }
+
+    pub fn choisir_port(&self, port: u8) -> Result<(), String> {
+        self.envoyer(&Demande::Port { port })
+    }
+
     pub fn pret(&self) -> Result<(), String> {
         self.envoyer(&Demande::Pret)
     }
@@ -276,6 +339,7 @@ mod tests {
             versions: Installees::new(),
             sha1: "aaa".into(),
             avatar: None,
+            port: None,
         }
     }
 

@@ -311,32 +311,44 @@ impl Mapping {
         lignes.join("\n") + "\n"
     }
 
-    /// La section [GCPad1] de GCPadNew.ini (Dolphin), manette XInput n° 0.
+    /// GCPadNew.ini (Dolphin) : quatre manettes GameCube, la n° 1 sur la
+    /// manette XInput 0, la n° 2 sur la 1… La 2e manette branchée marche
+    /// donc sans réglage, avec la même disposition.
     pub fn gcpad_dolphin(&self, console: Console) -> String {
-        let mut lignes = vec!["[GCPad1]".to_string(), "Device = XInput/0/Gamepad".into()];
-        for b in boutons(console) {
-            if let Cible::Dolphin(touche) = b.cible {
-                let p = self.physique(console, b.id).unwrap_or(b.par_defaut);
-                lignes.push(format!("{touche} = `{}`", p.nom_dolphin()));
+        self.gcpad_dolphin_avec(console, true)
+    }
+
+    pub fn gcpad_dolphin_avec(&self, console: Console, vibration: bool) -> String {
+        let mut lignes = Vec::new();
+        for n in 0..4 {
+            lignes.push(format!("[GCPad{}]", n + 1));
+            lignes.push(format!("Device = XInput/{n}/Gamepad"));
+            for b in boutons(console) {
+                if let Cible::Dolphin(touche) = b.cible {
+                    let p = self.physique(console, b.id).unwrap_or(b.par_defaut);
+                    lignes.push(format!("{touche} = `{}`", p.nom_dolphin()));
+                }
+            }
+            lignes.extend([
+                "Main Stick/Up = `Left Y+`".into(),
+                "Main Stick/Down = `Left Y-`".into(),
+                "Main Stick/Left = `Left X-`".into(),
+                "Main Stick/Right = `Left X+`".into(),
+                "C-Stick/Up = `Right Y+`".into(),
+                "C-Stick/Down = `Right Y-`".into(),
+                "C-Stick/Left = `Right X-`".into(),
+                "C-Stick/Right = `Right X+`".into(),
+                "Triggers/L-Analog = `Trigger L`".into(),
+                "Triggers/R-Analog = `Trigger R`".into(),
+                "D-Pad/Up = `Pad N`".into(),
+                "D-Pad/Down = `Pad S`".into(),
+                "D-Pad/Left = `Pad W`".into(),
+                "D-Pad/Right = `Pad E`".into(),
+            ]);
+            if vibration {
+                lignes.push("Rumble/Motor = `Motor L` | `Motor R`".into());
             }
         }
-        lignes.extend([
-            "Main Stick/Up = `Left Y+`".into(),
-            "Main Stick/Down = `Left Y-`".into(),
-            "Main Stick/Left = `Left X-`".into(),
-            "Main Stick/Right = `Left X+`".into(),
-            "C-Stick/Up = `Right Y+`".into(),
-            "C-Stick/Down = `Right Y-`".into(),
-            "C-Stick/Left = `Right X-`".into(),
-            "C-Stick/Right = `Right X+`".into(),
-            "Triggers/L-Analog = `Trigger L`".into(),
-            "Triggers/R-Analog = `Trigger R`".into(),
-            "D-Pad/Up = `Pad N`".into(),
-            "D-Pad/Down = `Pad S`".into(),
-            "D-Pad/Left = `Pad W`".into(),
-            "D-Pad/Right = `Pad E`".into(),
-            "Rumble/Motor = `Motor L` | `Motor R`".into(),
-        ]);
         lignes.join("\n") + "\n"
     }
 }
@@ -404,6 +416,9 @@ mod tests {
         assert!(ini.contains("Buttons/A = `Button A`"));
         assert!(ini.contains("Triggers/L = `Trigger L`"));
         assert!(ini.contains("C-Stick/Up"));
+        assert!(ini.contains("[GCPad2]\nDevice = XInput/1/Gamepad"));
+        assert!(ini.contains("[GCPad4]"));
+        assert!(!Mapping::par_defaut(Console::Gamecube).gcpad_dolphin_avec(Console::Gamecube, false).contains("Rumble"));
     }
 
     #[test]

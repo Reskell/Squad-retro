@@ -111,6 +111,25 @@ pub fn config(
             l.push(format!(r#"video_shader = "{}""#, chemin(shader)));
         }
     }
+    // Volume du jeu (en décibels pour RetroArch), vibration, avance rapide.
+    if profil.volume == 0 {
+        l.push(r#"audio_mute_enable = "true""#.into());
+    } else {
+        l.push(r#"audio_mute_enable = "false""#.into());
+        let db = 20.0 * (profil.volume.min(100) as f32 / 100.0).log10();
+        l.push(format!(r#"audio_volume = "{db:.1}""#));
+    }
+    l.push(format!(r#"input_rumble_gain = "{}""#, if profil.vibration { 100 } else { 0 }));
+    l.push(r#"input_toggle_fast_forward = "space""#.into());
+    l.push(r#"fastforward_ratio = "3.0""#.into());
+    // Run-ahead : une image d'avance, avec une 2e instance pour ne pas
+    // casser le son. Désactivé en netplay (incompatible).
+    let run_ahead = profil.run_ahead && session.is_none();
+    l.push(format!(r#"run_ahead_enabled = "{run_ahead}""#));
+    if run_ahead {
+        l.push(r#"run_ahead_frames = "1""#.into());
+        l.push(r#"run_ahead_secondary_instance = "true""#.into());
+    }
     if let Some(s) = session {
         l.extend(s.config_retroarch());
     }
@@ -223,6 +242,7 @@ mod tests {
             pseudo: "Swift".into(),
             mot_de_passe: None,
             relais: None,
+            port_manette: None,
         };
         preparer(Console::Snes, &ou, &profil, Some(&session)).unwrap();
         let cfg = fs::read_to_string(chemin_config(&ou.configs(), Console::Snes)).unwrap();
