@@ -29,6 +29,27 @@ pub struct Emplacements {
     pub dossier_dolphin: PathBuf,
 }
 
+impl Emplacements {
+    /// Les emplacements déduits de l'exécutable RetroArch : les cores sont
+    /// dans son dossier `cores/`, les configs SQUAD dans `donnees/configs`.
+    /// Dolphin n'est pas encore géré par la vague 1 : ses chemins pointent
+    /// vers `donnees/dolphin` en attendant l'installation automatique.
+    pub fn depuis_retroarch(retroarch: &Path, donnees: &Path) -> Emplacements {
+        let dossier = retroarch.parent().unwrap_or(Path::new("."));
+        Emplacements {
+            retroarch: retroarch.to_path_buf(),
+            cores: dossier.join("cores"),
+            configs: donnees.join("configs"),
+            dolphin: donnees.join("dolphin").join(if cfg!(windows) {
+                "Dolphin.exe"
+            } else {
+                "dolphin-emu"
+            }),
+            dossier_dolphin: donnees.join("dolphin").join("User"),
+        }
+    }
+}
+
 /// Une commande prête à lancer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Commande {
@@ -61,7 +82,9 @@ pub fn commande(console: Console, variante: &Variante, ou: &Emplacements) -> Com
     let rom = variante.chemin.to_string_lossy().into_owned();
     match console.moteur() {
         Moteur::Retroarch { core } => {
-            let core = ou.cores.join(format!("{core}_libretro.{}", extension_core()));
+            let core = ou
+                .cores
+                .join(format!("{core}_libretro.{}", extension_core()));
             let config = chemin_config(&ou.configs, console);
             Commande {
                 programme: ou.retroarch.clone(),
@@ -86,6 +109,56 @@ pub fn commande(console: Console, variante: &Variante, ou: &Emplacements) -> Com
             ],
         },
     }
+}
+
+/// Vérifie que tout est en place pour lancer une console, avec un message
+/// clair sinon.
+pub fn verifier(console: Console, ou: &Emplacements) -> Result<(), String> {
+    match console.moteur() {
+        Moteur::Retroarch { core } => {
+            if !ou.retroarch.is_file() {
+                return Err(
+                    "RetroArch est introuvable : choisis retroarch.exe dans les réglages.".into(),
+                );
+            }
+            let fichier = ou
+                .cores
+                .join(format!("{core}_libretro.{}", extension_core()));
+            if !fichier.is_file() {
+                return Err(format!(
+                    "Le core « {core} » ({}) manque dans {}. L'installation automatique arrive avec la vague 3 ; \
+                     en attendant, installe-le une fois depuis RetroArch (Mise à jour en ligne > Télécharger un core).",
+                    console.nom(),
+                    ou.cores.display()
+                ));
+            }
+            Ok(())
+        }
+        Moteur::Dolphin => {
+            if ou.dolphin.is_file() {
+                Ok(())
+            } else {
+                Err("Dolphin n'est pas encore installé : la GameCube et la Wii arrivent avec la vague 2.".into())
+            }
+        }
+    }
+}
+
+/// Écrit la config SQUAD d'une console avant de la lancer (RetroArch seulement).
+pub fn preparer(
+    console: Console,
+    ou: &Emplacements,
+    dossier_sauvegardes: &Path,
+) -> std::io::Result<()> {
+    if let Moteur::Retroarch { .. } = console.moteur() {
+        std::fs::create_dir_all(&ou.configs)?;
+        std::fs::create_dir_all(dossier_sauvegardes.join(console.dossier()))?;
+        std::fs::write(
+            chemin_config(&ou.configs, console),
+            config_retroarch(console, dossier_sauvegardes),
+        )?;
+    }
+    Ok(())
 }
 
 /// Le fichier de config RetroArch d'une console.
@@ -147,7 +220,11 @@ mod tests {
 
     #[test]
     fn commande_retroarch() {
-        let c = commande(Console::Snes, &variante("/roms/snes/a.sfc"), &emplacements());
+        let c = commande(
+            Console::Snes,
+            &variante("/roms/snes/a.sfc"),
+            &emplacements(),
+        );
         assert_eq!(c.programme, PathBuf::from("/emu/retroarch"));
         assert_eq!(c.arguments[0], "-L");
         assert!(c.arguments[1].contains("snes9x_libretro."));
@@ -156,11 +233,37 @@ mod tests {
 
     #[test]
     fn commande_dolphin() {
-        let c = commande(Console::Gamecube, &variante("/roms/gc/mkdd.rvz"), &emplacements());
+        let c = commande(
+            Console::Gamecube,
+            &variante("/roms/gc/mkdd.rvz"),
+            &emplacements(),
+        );
         assert_eq!(
             c.arguments,
             vec!["-u", "/squad/dolphin", "-b", "-e", "/roms/gc/mkdd.rvz"]
         );
+    }
+
+    #[test]
+    fn verifie_et_prepare() {
+        let dir = tempfile::tempdir().unwrap();
+        let exe = dir.path().join("retroarch.exe");
+        let ou = Emplacements::depuis_retroarch(&exe, &dir.path().join("donnees"));
+        assert!(verifier(Console::Snes, &ou)
+            .unwrap_err()
+            .contains("RetroArch"));
+        std::fs::write(&exe, b"").unwrap();
+        assert!(verifier(Console::Snes, &ou).unwrap_err().contains("snes9x"));
+        std::fs::create_dir_all(&ou.cores).unwrap();
+        std::fs::write(
+            ou.cores
+                .join(format!("snes9x_libretro.{}", extension_core())),
+            b"",
+        )
+        .unwrap();
+        assert!(verifier(Console::Snes, &ou).is_ok());
+        preparer(Console::Snes, &ou, &dir.path().join("saves")).unwrap();
+        assert!(chemin_config(&ou.configs, Console::Snes).is_file());
     }
 
     #[test]

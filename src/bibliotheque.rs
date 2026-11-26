@@ -119,7 +119,9 @@ pub fn scanner_console(console: Console, dossier: &Path, options: &Options) -> V
 }
 
 fn lister(dossier: &Path, console: Console, profondeur: u8, sortie: &mut Vec<PathBuf>) {
-    let Ok(entrees) = fs::read_dir(dossier) else { return };
+    let Ok(entrees) = fs::read_dir(dossier) else {
+        return;
+    };
     let mut entrees: Vec<_> = entrees.flatten().map(|e| e.path()).collect();
     entrees.sort();
     for chemin in entrees {
@@ -141,7 +143,9 @@ fn identifier(chemin: &Path, console: Console, options: &Options) -> Variante {
         .to_string();
 
     let empreintes = if identification::empreinte_utile(console)
-        && fs::metadata(chemin).map(|m| m.len() <= TAILLE_MAX_EMPREINTE).unwrap_or(false)
+        && fs::metadata(chemin)
+            .map(|m| m.len() <= TAILLE_MAX_EMPREINTE)
+            .unwrap_or(false)
     {
         identification::empreintes(chemin, console).ok()
     } else {
@@ -165,10 +169,40 @@ fn identifier(chemin: &Path, console: Console, options: &Options) -> Variante {
     }
 }
 
+/// Charge les bases rangées dans un dossier : `nes.dat`, `snes.dat`… (le nom
+/// du dossier de la console). Une base absente ou illisible est ignorée : les
+/// jeux de cette console sont alors reconnus par leur nom de fichier.
+pub fn charger_bases(dossier: &Path) -> HashMap<Console, Base> {
+    let mut bases = HashMap::new();
+    for console in Console::TOUTES {
+        let fichier = dossier.join(format!("{}.dat", console.dossier()));
+        if let Ok(texte) = fs::read_to_string(&fichier) {
+            if let Ok(base) = Base::lire(&texte) {
+                bases.insert(console, base);
+            }
+        }
+    }
+    bases
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::fs::write;
+
+    #[test]
+    fn charge_les_bases_presentes() {
+        let dir = tempfile::tempdir().unwrap();
+        write(
+            dir.path().join("nes.dat"),
+            r#"<datafile><game name="X (USA)"><rom crc="1" sha1="2"/></game></datafile>"#,
+        )
+        .unwrap();
+        write(dir.path().join("snes.dat"), "pas du xml <<<").unwrap();
+        let bases = charger_bases(dir.path());
+        assert!(bases.contains_key(&Console::Nes));
+        assert!(!bases.contains_key(&Console::N64));
+    }
 
     #[test]
     fn regroupe_et_prefere_la_france() {
@@ -200,7 +234,10 @@ mod tests {
         </game></datafile>"#;
         let mut bases = HashMap::new();
         bases.insert(Console::Snes, Base::lire(dat).unwrap());
-        let options = Options { bases: &bases, ordre: &ORDRE_PAR_DEFAUT };
+        let options = Options {
+            bases: &bases,
+            ordre: &ORDRE_PAR_DEFAUT,
+        };
 
         let biblio = Bibliotheque::scanner(dir.path(), &options);
         let fiche = biblio.de(Console::Snes).next().unwrap();

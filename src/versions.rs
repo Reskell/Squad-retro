@@ -41,8 +41,15 @@ pub type Installees = BTreeMap<String, String>;
 /// Ce qu'il faut faire pour un composant.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
-    Installer { nom: String, composant: Composant },
-    MettreAJour { nom: String, de: String, composant: Composant },
+    Installer {
+        nom: String,
+        composant: Composant,
+    },
+    MettreAJour {
+        nom: String,
+        de: String,
+        composant: Composant,
+    },
 }
 
 impl Validees {
@@ -91,7 +98,9 @@ mod tests {
         installees.insert("dolphin".into(), "2509".into());
         let actions = v.a_faire(&installees);
         assert_eq!(actions.len(), 2);
-        assert!(matches!(&actions[0], Action::MettreAJour { nom, de, .. } if nom == "dolphin" && de == "2509"));
+        assert!(
+            matches!(&actions[0], Action::MettreAJour { nom, de, .. } if nom == "dolphin" && de == "2509")
+        );
         assert!(matches!(&actions[1], Action::Installer { nom, .. } if nom == "retroarch"));
     }
 

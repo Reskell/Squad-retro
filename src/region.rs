@@ -60,7 +60,10 @@ impl Region {
 
 /// La place d'une région dans un ordre de préférence (0 = la meilleure).
 pub fn rang(region: Region, ordre: &[Region]) -> usize {
-    ordre.iter().position(|r| *r == region).unwrap_or(ordre.len())
+    ordre
+        .iter()
+        .position(|r| *r == region)
+        .unwrap_or(ordre.len())
 }
 
 /// Le titre d'un jeu sans ses parenthèses : « Super Mario World (USA) (Rev 1) »
@@ -102,7 +105,10 @@ mod tests {
     #[test]
     fn lit_les_regions() {
         assert_eq!(Region::depuis_nom("Super Mario World (USA)"), Region::Usa);
-        assert_eq!(Region::depuis_nom("Kirby (Europe) (En,Fr,De)"), Region::Europe);
+        assert_eq!(
+            Region::depuis_nom("Kirby (Europe) (En,Fr,De)"),
+            Region::Europe
+        );
         assert_eq!(Region::depuis_nom("Tintin (France)"), Region::France);
         assert_eq!(Region::depuis_nom("Tetris (Japan, USA)"), Region::Usa);
         assert_eq!(Region::depuis_nom("Homebrew sans region"), Region::Autre);
@@ -110,7 +116,10 @@ mod tests {
 
     #[test]
     fn titres() {
-        assert_eq!(titre("Super Mario World (USA) (Rev 1)"), "Super Mario World");
+        assert_eq!(
+            titre("Super Mario World (USA) (Rev 1)"),
+            "Super Mario World"
+        );
         assert_eq!(titre("Zelda [!] (Europe)"), "Zelda");
     }
 }

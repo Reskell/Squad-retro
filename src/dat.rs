@@ -46,13 +46,16 @@ impl Base {
                         jeu_courant = attribut(&e, b"name");
                     }
                     b"rom" => {
-                        let Some(nom) = jeu_courant.clone() else { continue };
+                        let Some(nom) = jeu_courant.clone() else {
+                            continue;
+                        };
                         let entree = Entree {
                             nom,
                             taille: attribut(&e, b"size").and_then(|t| t.parse().ok()),
                         };
                         if let Some(sha1) = attribut(&e, b"sha1") {
-                            base.par_sha1.insert(sha1.to_ascii_lowercase(), entree.clone());
+                            base.par_sha1
+                                .insert(sha1.to_ascii_lowercase(), entree.clone());
                         }
                         if let Some(crc) = attribut(&e, b"crc") {
                             base.par_crc.insert(crc.to_ascii_lowercase(), entree);
@@ -114,7 +117,10 @@ mod tests {
         let base = Base::lire(EXEMPLE).unwrap();
         assert_eq!(base.len(), 2);
         assert_eq!(base.chercher("aaaa", "").unwrap().nom, "Jeu A (USA)");
-        assert_eq!(base.chercher("zzzz", "00001111").unwrap().nom, "Jeu A (France)");
+        assert_eq!(
+            base.chercher("zzzz", "00001111").unwrap().nom,
+            "Jeu A (France)"
+        );
         assert!(base.chercher("zzzz", "ffffffff").is_none());
     }
 }

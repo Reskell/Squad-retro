@@ -83,7 +83,9 @@ impl Console {
             Console::N64 => Moteur::Retroarch {
                 core: "mupen64plus_next",
             },
-            Console::Ps1 => Moteur::Retroarch { core: "swanstation" },
+            Console::Ps1 => Moteur::Retroarch {
+                core: "swanstation",
+            },
             Console::Gamecube | Console::Wii => Moteur::Dolphin,
         }
     }
