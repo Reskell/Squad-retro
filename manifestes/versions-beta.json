@@ -1,0 +1,40 @@
+{
+  "revision": 1,
+  "composants": {
+    "retroarch": {
+      "version": "1.21.0",
+      "url": "https://buildbot.libretro.com/stable/1.21.0/windows/x86_64/RetroArch.7z",
+      "sha256": "b15cf5c81d9b21869be2cdf78ee18a51fb8d295189beae6ca4eacc7a352683a1"
+    },
+    "shaders": {
+      "version": "1.21.0",
+      "url": "https://buildbot.libretro.com/assets/frontend/shaders_slang.zip",
+      "sha256": "5ca596ea047b4dceef8ea59cb67ba5b6bc09060d0245da24ea633f1be9e531fc"
+    },
+    "core:mesen": {
+      "version": "20261126",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r1/mesen_libretro.dll.zip",
+      "sha256": "7814800b47c76a515efc7f4c5597c81b04ee25a3b7cf2bb4fbace5e691d93480"
+    },
+    "core:snes9x": {
+      "version": "20261126",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r1/snes9x_libretro.dll.zip",
+      "sha256": "4c2b18e693d4bce5c7c88fd927839e8b09e6791104773053766ba2707413ecce"
+    },
+    "core:mupen64plus_next": {
+      "version": "20261126",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r1/mupen64plus_next_libretro.dll.zip",
+      "sha256": "f9666e800feb057575b333608bd44223e4a8f2e7267678ffa1e8dec3052e7cee"
+    },
+    "core:swanstation": {
+      "version": "20261126",
+      "url": "https://github.com/Reskell/Squad-retro/releases/download/composants-r1/swanstation_libretro.dll.zip",
+      "sha256": "8a4736aa65232417bbd3f66a17a297b54a2dfc0dffdad9e2a4e6a828bd7608a8"
+    },
+    "dolphin": {
+      "version": "2509",
+      "url": "https://dl.dolphin-emu.org/releases/2509/dolphin-2509-x64.7z",
+      "sha256": "3a910cd09887bdc17df0d344de18249ac9c060d006649cd8660b791a5e8ba355"
+    }
+  }
+}
