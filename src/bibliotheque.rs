@@ -101,19 +101,26 @@ impl Bibliotheque {
     }
 
     /// Recherche sur toutes les consoles : chaque mot doit apparaître dans le
-    /// titre, sans tenir compte des majuscules ni des accents.
+    /// titre, sans tenir compte des majuscules ni des accents. Les fautes de
+    /// frappe passent (« zelad », « mario prty ») : les titres exacts d'abord,
+    /// puis ceux trouvés malgré une faute.
     pub fn rechercher(&self, texte: &str) -> Vec<&Fiche> {
-        let mots: Vec<String> = texte.split_whitespace().map(simplifier).collect();
+        let mots: Vec<String> = texte.split_whitespace().map(simplifier).filter(|m| !m.is_empty()).collect();
         if mots.is_empty() {
             return Vec::new();
         }
-        self.fiches
-            .iter()
-            .filter(|f| {
-                let titre = simplifier(&f.titre);
-                mots.iter().all(|m| titre.contains(m.as_str()))
-            })
-            .collect()
+        let mut exacts = Vec::new();
+        let mut proches = Vec::new();
+        for f in &self.fiches {
+            let titre = simplifier(&f.titre);
+            if mots.iter().all(|m| titre.contains(m.as_str())) {
+                exacts.push(f);
+            } else if mots.iter().all(|m| mot_proche(m, &titre)) {
+                proches.push(f);
+            }
+        }
+        exacts.extend(proches);
+        exacts
     }
 
     /// Un jeu au hasard parmi ceux qui passent le filtre. `graine` vient de
@@ -162,6 +169,46 @@ pub fn scanner_console(console: Console, dossier: &Path, options: &Options) -> V
             }
         })
         .collect()
+}
+
+/// Vrai si le mot apparaît dans le titre à une faute près (deux pour un mot
+/// de plus de 6 lettres), au début d'un mot du titre.
+fn mot_proche(mot: &str, titre: &str) -> bool {
+    if titre.contains(mot) {
+        return true;
+    }
+    let n = mot.chars().count();
+    if n < 3 {
+        return false;
+    }
+    let tolerance = if n > 6 { 2 } else { 1 };
+    titre.split(' ').any(|t| {
+        let debut: String = t.chars().take(n).collect();
+        distance(mot, &debut) <= tolerance || distance(mot, t) <= tolerance
+    })
+}
+
+/// Distance d'édition (Damerau simplifiée : une inversion compte pour 1).
+fn distance(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    let mut d = vec![vec![0usize; b.len() + 1]; a.len() + 1];
+    for (i, ligne) in d.iter_mut().enumerate() {
+        ligne[0] = i;
+    }
+    for (j, v) in d[0].iter_mut().enumerate() {
+        *v = j;
+    }
+    for i in 1..=a.len() {
+        for j in 1..=b.len() {
+            let cout = usize::from(a[i - 1] != b[j - 1]);
+            d[i][j] = (d[i - 1][j] + 1).min(d[i][j - 1] + 1).min(d[i - 1][j - 1] + cout);
+            if i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1] {
+                d[i][j] = d[i][j].min(d[i - 2][j - 2] + 1);
+            }
+        }
+    }
+    d[a.len()][b.len()]
 }
 
 /// En minuscules, sans accents ni ponctuation : « Pokémon : Rouge » → « pokemon rouge ».
@@ -255,6 +302,15 @@ pub fn charger_bases(dossier: &Path) -> HashMap<Console, Base> {
 mod tests {
     use super::*;
     use std::fs::write;
+
+    #[test]
+    fn recherche_tolerante() {
+        assert_eq!(distance("zelad", "zelda"), 1);
+        assert!(mot_proche("zelad", "the legend of zelda"));
+        assert!(mot_proche("prty", "mario party 6"));
+        assert!(!mot_proche("kong", "mario party 6"));
+        assert!(!mot_proche("ab", "abc"));
+    }
 
     #[test]
     fn doublons_recherche_hasard() {
